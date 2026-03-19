@@ -1,0 +1,111 @@
+name: Deploy via ArgoCD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: github.event.head_commit.author.email == 'gitops@bot.com'
+    runs-on: ubuntu-latest
+
+    env:
+      ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+      ARGOCD_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+
+      - name: Show commit info (repository, branch, author)
+        run: |
+          echo "===== DEBUG EVENT DATA ====="
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref }}"
+          echo ""
+          echo "===== COMMIT AUTHOR ====="
+          echo "Actor (triggered by): ${{ github.actor }}"
+          echo "Author: ${{ github.event.head_commit.author.name }} <${{ github.event.head_commit.author.email }}>"
+          echo ""
+
+      - name: Detect changed apps from commit message
+        id: detect
+        run: |
+          echo "===== COMMIT MESSAGE ====="
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "$COMMIT_MSG"
+          echo ""
+
+          echo "===== EXTRACT APP NAMES ====="
+          APPS=$(echo "$COMMIT_MSG" \
+            | grep -oP '\(\K[^)]+' \
+            | tr ',' '\n' \
+            | sort -u)
+
+          echo "Detected apps:"
+          echo "$APPS"
+          echo ""
+
+          if [ -z "$APPS" ]; then
+            echo "No app detected from commit message."
+            echo "apps=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "apps=$APPS" >> $GITHUB_OUTPUT
+          echo "===== OUTPUT SET ====="
+          echo "apps=$APPS"
+
+      - name: Install ArgoCD CLI
+        if: steps.detect.outputs.apps != ''
+        run: |
+          curl -sSL -o argocd \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/
+
+      - name: Apply ArgoCD Application if missing
+        if: steps.detect.outputs.apps != ''
+        run: |
+          for app in ${{ steps.detect.outputs.apps }}
+          do
+            APP_PATH="projects/dev/backend/$app/application.yaml"
+            if [ -f "$APP_PATH" ]; then
+              echo "Creating/updating ArgoCD Application $app..."
+              argocd app create -f "$APP_PATH" \
+                --server $ARGOCD_SERVER \
+                --auth-token $ARGOCD_TOKEN \
+                --grpc-web || echo "App $app may already exist, skipping create"
+            else
+              echo "⚠️ Application file not found for $app at $APP_PATH, skipping."
+            fi
+          done
+
+      - name: Sync changed apps
+        if: steps.detect.outputs.apps != ''
+        run: |
+          for app in ${{ steps.detect.outputs.apps }}
+          do
+            echo "Syncing $app via ArgoCD..."
+            argocd app sync "$app" \
+              --server $ARGOCD_SERVER \
+              --auth-token $ARGOCD_TOKEN \
+              --grpc-web
+          done
+
+      - name: Wait for deployment
+        if: steps.detect.outputs.apps != ''
+        run: |
+          for app in ${{ steps.detect.outputs.apps }}
+          do
+            echo "Waiting for $app to be healthy and synced..."
+            argocd app wait "$app" \
+              --server $ARGOCD_SERVER \
+              --auth-token $ARGOCD_TOKEN \
+              --grpc-web \
+              --operation \
+              --timeout 300
+          done

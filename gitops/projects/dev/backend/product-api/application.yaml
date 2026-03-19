@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: product-api
+  namespace: argocd
+  labels:
+    app: product-api
+    app.kubernetes.io/name: product-api
+    app.kubernetes.io/part-of: backend
+    app.kubernetes.io/component: api
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/long29103107/gitops.git
+    targetRevision: main
+    path: projects/dev/backend/product-api/chart
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backend
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

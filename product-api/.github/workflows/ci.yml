@@ -1,0 +1,69 @@
+name: build-product-api
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ghcr.io/${{ github.repository }}:${{ github.sha }} \
+            -t ghcr.io/${{ github.repository }}:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository }}:latest
+
+  update-gitops-repo:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        with:
+          repository: long29103107/gitops
+          ref: main
+          token: ${{ secrets.GHCR_PAT }}
+          path: gitops
+          fetch-depth: 0
+
+      - name: Update Image Tag
+        run: |
+          APP_NAME=${{ github.event.repository.name }}
+
+          cd gitops/projects/dev/backend/$APP_NAME/chart
+
+          NEW_TAG="${{ github.sha }}"
+
+          echo "Updating $APP_NAME image tag to $NEW_TAG"
+
+          sed -i "s|^\([[:space:]]*tag:[[:space:]]*\).*|\1\"$NEW_TAG\"|" values.yaml
+
+          git config user.name "GitOps Bot"
+          git config user.email "gitops@bot.com"
+
+          git add .
+          git commit -m "chore($APP_NAME): update image tag to $NEW_TAG" || echo "No changes to commit"
+          git push

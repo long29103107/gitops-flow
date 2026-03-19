@@ -1,0 +1,35 @@
+# product-api overrides for backend-base
+backend-base:
+  nameOverride: product-api
+  fullnameOverride: product-api
+
+  namespace: backend
+  replicaCount: 1
+  revisionHistoryLimit: 10
+
+  image:
+    repository: ghcr.io/long29103107/product-api
+    tag: "6e7032f48af4ce9c3972a8751e6cfbb359cf6a7c"
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets:
+    - name: ghcr-secret
+
+  containerPort: 80
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    host: product-api.longthedragon.site
+    path: /
+    pathType: Prefix
+
+  env: []
+  resources: {}

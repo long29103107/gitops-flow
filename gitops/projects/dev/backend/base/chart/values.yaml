@@ -1,0 +1,33 @@
+# Base chart defaults - override in app's values (under dependency key)
+nameOverride: ""
+fullnameOverride: ""
+
+namespace: backend
+
+replicaCount: 1
+revisionHistoryLimit: 10
+
+image:
+  repository: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+containerPort: 80
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  host: ""
+  path: /
+  pathType: Prefix
+
+env: []
+resources: {}
