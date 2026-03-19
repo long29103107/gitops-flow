@@ -20,8 +20,6 @@
 
 ## GitOps flow
 
-The deployment pipeline follows the [GitOps workflow](https://shore-stag-b2c.notion.site/GitOps-flow-3204a34e8bb8806c9802dafecb4c09b7):
-
 ### Phase 1 — Tạo repo product-api
 
 Tạo repo GitHub `product-api` với cấu trúc:
@@ -137,4 +135,3 @@ Create an ArgoCD Application pointing to:
 - `projects/dev/backend/product-api/chart` (or `application.yaml`)
 
 ArgoCD auto-syncs when the GitOps repo is updated.
-
