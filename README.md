@@ -36,7 +36,7 @@ product-api/
 └── ...
 ```
 
-- **Dockerfile:** Build .NET app, expose port 8080
+- **Dockerfile:** Build .NET app, expose port 80
 - **ci.yml:** Push image `ghcr.io/<org>/product-api:<sha>` → update tag in GitOps repo
 
 ### Phase 2 — Create GitOps repo
@@ -51,11 +51,29 @@ gitops/
 └── projects/
     └── dev/
         └── backend/
+            ├── base/
+            │   └── chart/                    # Reusable base chart (DRY)
+            │       ├── Chart.yaml
+            │       ├── values.yaml
+            │       └── templates/
+            │           ├── deployment.yaml
+            │           ├── service.yaml
+            │           ├── ingress.yaml
+            │           └── _helpers.tpl
             └── product-api/
-                ├── application.yaml   # ArgoCD Application
+                ├── application.yaml        # ArgoCD Application
                 └── chart/
-                    └── values.yaml    # image: ghcr.io/org/product-api:<tag>
+                    ├── Chart.yaml           # depends on backend-base
+                    └── values.yaml          # image: ghcr.io/org/product-api:<tag>
 ```
+
+**Why include `base`?**
+
+The `backend-base` chart centralizes common Kubernetes manifests (Deployment, Service, Ingress) so each service (product-api, order-api, …) only provides app-specific `values.yaml` and depends on it. Benefits:
+
+- **DRY (Don't Repeat Yourself):** No duplicated Deployment/Service/Ingress templates per service.
+- **Single place to update:** Changes to ingress, resource limits, or security policies apply to all backend services.
+- **Easier to add new services:** New APIs just add a chart + values; no copy-paste.
 
 product-api CI replaces the image tag in `values.yaml` on each build.
 
@@ -91,7 +109,7 @@ product-api CI replaces the image tag in `values.yaml` on each build.
 
 #### Set Secret
 
-- **Repo product-api:** **Settings** → **Secrets and variables** → **Actions** → add `GHCR_PAT`, `PULL_PACKAGE`, `ARGO_CD_TOKEN`
+- **Repo product-api:** **Settings** → **Secrets and variables** → **Actions** → add `GHCR_PAT`, `PULL_PACKAGE`
 - **Repo gitops:** **Settings** → **Secrets and variables** → **Actions** → add `ARGOCD_SERVER`, `ARGOCD_TOKEN`
 
 ### Phase 4 — CI workflow (per service repo)
