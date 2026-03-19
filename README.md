@@ -20,9 +20,9 @@
 
 ## GitOps flow
 
-### Phase 1 — Tạo repo product-api
+### Phase 1 — Create product-api repo
 
-Tạo repo GitHub `product-api` với cấu trúc:
+Create GitHub repo `product-api` with the following structure:
 
 ```
 product-api/
@@ -37,17 +37,17 @@ product-api/
 ```
 
 - **Dockerfile:** Build .NET app, expose port 8080
-- **ci.yml:** Push image `ghcr.io/<org>/product-api:<sha>` → cập nhật tag trong repo GitOps
+- **ci.yml:** Push image `ghcr.io/<org>/product-api:<sha>` → update tag in GitOps repo
 
-### Phase 2 — Tạo repo GitOps
+### Phase 2 — Create GitOps repo
 
-Tạo repo GitHub `gitops` với cấu trúc:
+Create GitHub repo `gitops` with the following structure:
 
 ```
 gitops/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yaml  # ArgoCD sync khi có commit
+│       └── deploy.yaml  # ArgoCD sync on commit
 └── projects/
     └── dev/
         └── backend/
@@ -57,46 +57,41 @@ gitops/
                     └── values.yaml    # image: ghcr.io/org/product-api:<tag>
 ```
 
-CI của product-api sẽ thay thế image tag trong `values.yaml` mỗi khi build.
+product-api CI replaces the image tag in `values.yaml` on each build.
 
 ### Phase 3 — Secrets
 
 #### product-api secret
 
-
 | Secret         | Purpose                                  | PAT scope                |
 | -------------- | ---------------------------------------- | ------------------------ |
 | `GHCR_PAT`     | Push images to GitHub Container Registry | `repo`, `write:packages` |
 | `PULL_PACKAGE` | Pull images from GHCR                    | `read:packages`          |
-
+| `ARGO_CD_TOKEN`| Clone and push to the GitOps repo        | `repo`                   |
 
 #### gitops secret
-
 
 | Secret          | Purpose                   |
 | --------------- | ------------------------- |
 | `ARGOCD_SERVER` | ArgoCD server URL         |
 | `ARGOCD_TOKEN`  | ArgoCD API token for sync |
 
-
-> **Lưu ý bảo mật:** Trong setup này, endpoint ArgoCD được public ra ngoài để GitHub Actions có thể gọi sync. **Trên thực tế (production), ArgoCD không nên public** — nên để internal (VPN, private network, hoặc GitHub Actions self-hosted trong cùng cluster) để đảm bảo an toàn cho hệ thống.
+> **Security note:** In this setup, the ArgoCD endpoint is exposed publicly so GitHub Actions can call sync. **In production, ArgoCD should NOT be public** — keep it internal (VPN, private network, or GitHub Actions self-hosted in the same cluster) for system security.
 
 #### Get Secret
 
-**product-api (lấy từ PAT):**
-
-- Tạo PAT tại: **GitHub** → **Settings** → **Developer settings** → **Personal access tokens** → **Generate new token (classic)**
-- Chọn scope tương ứng cho từng secret (xem bảng trên)
+**product-api (from PAT):**
+- Create PAT at: **GitHub** → **Settings** → **Developer settings** → **Personal access tokens** → **Generate new token (classic)**
+- Select the corresponding scope for each secret (see table above)
 
 **gitops (ArgoCD token):**
-
-1. Tạo bot account trong ArgoCD: **Settings** → **Accounts** → **+ New Account**
-2. Generate token: `argocd account generate-token <bot-username>` hoặc trong ArgoCD UI: **Settings** → **Accounts** → chọn bot user → **Generate new token**
+1. Create bot account in ArgoCD: **Settings** → **Accounts** → **+ New Account**
+2. Generate token: `argocd account generate-token <bot-username>` or in ArgoCD UI: **Settings** → **Accounts** → select bot user → **Generate new token**
 
 #### Set Secret
 
-- **Repo product-api:** **Settings** → **Secrets and variables** → **Actions** → thêm `GHCR_PAT`, `PULL_PACKAGE`, `ARGO_CD_TOKEN`
-- **Repo gitops:** **Settings** → **Secrets and variables** → **Actions** → thêm `ARGOCD_SERVER`, `ARGOCD_TOKEN`
+- **Repo product-api:** **Settings** → **Secrets and variables** → **Actions** → add `GHCR_PAT`, `PULL_PACKAGE`, `ARGO_CD_TOKEN`
+- **Repo gitops:** **Settings** → **Secrets and variables** → **Actions** → add `ARGOCD_SERVER`, `ARGOCD_TOKEN`
 
 ### Phase 4 — CI workflow (per service repo)
 
