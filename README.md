@@ -63,11 +63,10 @@ product-api CI replaces the image tag in `values.yaml` on each build.
 
 #### product-api secret
 
-| Secret          | Purpose                                  | PAT scope                |
-| --------------- | ---------------------------------------- | ------------------------ |
-| `GHCR_PAT`      | Push images to GitHub Container Registry | `repo`, `write:packages` |
-| `PULL_PACKAGE`  | Pull images from GHCR                    | `read:packages`          |
-| `ARGO_CD_TOKEN` | Clone and push to the GitOps repo        | `repo`                   |
+| Secret         | Purpose                                  | PAT scope                |
+| -------------- | ---------------------------------------- | ------------------------ |
+| `GHCR_PAT`     | Push images to GitHub Container Registry | `repo`, `write:packages` |
+| `PULL_PACKAGE` | Pull images from GHCR                    | `read:packages`          |
 
 #### gitops secret
 
@@ -76,7 +75,7 @@ product-api CI replaces the image tag in `values.yaml` on each build.
 | `ARGOCD_SERVER` | ArgoCD server URL         |
 | `ARGOCD_TOKEN`  | ArgoCD API token for sync |
 
-> **Security note:** In this setup, the ArgoCD endpoint is exposed publicly so GitHub Actions can call sync. **In production, ArgoCD should NOT be public** — keep it internal (VPN, private network, or GitHub Actions self-hosted in the same cluster) to ensure system security.
+> **Security note:** In this setup, the ArgoCD endpoint is exposed publicly so GitHub Actions can call sync. **In production, ArgoCD should NOT be public** — keep it internal (VPN, private network, or GitHub Actions self-hosted in the same cluster) for system security.
 
 #### Get Secret
 
@@ -92,8 +91,8 @@ product-api CI replaces the image tag in `values.yaml` on each build.
 
 #### Set Secret
 
-- **product-api repo:** **Settings** → **Secrets and variables** → **Actions** → add `GHCR_PAT`, `PULL_PACKAGE`, `ARGO_CD_TOKEN`
-- **gitops repo:** **Settings** → **Secrets and variables** → **Actions** → add `ARGOCD_SERVER`, `ARGOCD_TOKEN`
+- **Repo product-api:** **Settings** → **Secrets and variables** → **Actions** → add `GHCR_PAT`, `PULL_PACKAGE`, `ARGO_CD_TOKEN`
+- **Repo gitops:** **Settings** → **Secrets and variables** → **Actions** → add `ARGOCD_SERVER`, `ARGOCD_TOKEN`
 
 ### Phase 4 — CI workflow (per service repo)
 
